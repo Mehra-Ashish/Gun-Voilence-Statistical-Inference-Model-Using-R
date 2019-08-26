@@ -1,0 +1,92 @@
+setwd("C:/God Damn Courses/Spring 19/BUAN 6312 - Applied Econometrics and Time Series Analysis - S19/project/Fall 2018")
+
+library(data.table)
+library(tidyverse)
+library(foreign)
+library(lmtest)
+library(sandwich) # For White correction
+library(plm)
+library(dplyr)
+rm(list=ls())
+
+guns<-read.dta('guns.dta')
+View(guns)
+hist(guns$shall)
+#functions used
+
+
+ic <- function(x){
+  return(c(AIC(x),BIC(x)))
+}
+
+
+#CORRELATION 
+cor(guns$vio,guns$mur)
+cor(guns$pw1064,guns$pb1064)
+cor(guns$vio,guns$rob)
+guns_panel <- pdata.frame(guns, index = c('stateid','year'))
+View(guns_panel)
+
+
+
+#data models 
+#polling
+model1<-plm(vio~shall+incarc_rate+density+avginc+pop+pb1064+pw1064+pm1029,model='pooling',data=guns_panel)
+summary(model1)
+summary(model1,method="arellano")
+summary(model1,method='white1')
+
+#entity fixed effects
+model2<-plm(vio~shall+incarc_rate+density+avginc+pop+pb1064+pw1064+pm1029,effect="individual",model="within",data=guns_panel)
+summary(model2)
+summary(model2,method="arellano")
+model21<-plm(vio~shall+incarc_rate+density+avginc+pop+pb1064+pw1064+pm1029,effect='individual',model='between',data=guns_panel)
+summary(model21)
+
+#f-test between pooled and fixed effects 
+pftest(model1,model2)
+
+#time fixed effects
+model3<-plm(vio~shall+incarc_rate+density+avginc+pop+pb1064+pw1064+pm1029,effect='time',model='within',data=guns_panel)
+summary(model3)
+
+model31<-plm(vio~as.factor(year),model='within',data=guns_panel)
+summary(model31)
+
+model32<-plm(vio~shall+incarc_rate+density+avginc+pop+pb1064+pw1064+pm1029+as.factor(year),effect='time',model='between',data=guns_panel)
+summary(model32)
+
+#two way fixed effects
+model4<-plm(vio~shall+incarc_rate+density+avginc+pop+pb1064+pw1064+pm1029,effect='twoways',model='within',data=guns_panel)
+summary(model4)
+
+model41<-plm(vio~shall+incarc_rate+density+avginc+pop+pb1064+pw1064+pm1029+as.factor(year),effect='individual',model='within',data=guns_panel)
+summary(model41)
+
+#random effect 
+model5<-plm(vio~shall+incarc_rate+density+avginc+pop+pb1064+pw1064+pm1029,model='random',data=guns_panel)
+summary(model5)
+
+#hausman test
+
+phtest(model4,model5)
+
+#fixed effect models 
+
+model<-plm(vio~shall+incarc_rate+density+avginc+pop+pb1064+pw1064+pm1029+pm1029*pw1064+pb1064*pm1029+density*avginc+incarc_rate*pb1064,effect='individual',model='within',data=guns_panel)
+summary(model)
+summary(step(model1))
+ic(model2)
+ic(model)
+AIC(model1)
+
+
+
+pooltest(log(vio)~shall+incarc_rate+density+avginc+pop+pb1064+pw1064+pm1029,model="within",data=guns_panel)
+
+
+
+
+
+
+
